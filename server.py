@@ -543,6 +543,46 @@ def handle_referral(request: Request, code: str):
     return RedirectResponse(url=f"/Frontend/index.html?pendingReferral={referrer_username}")
 
 
+# ============== Private Message Endpoints ==============
+
+@app.get("/api/users/list")
+@require_auth
+def list_users(request: Request):
+    """Get list of all usernames for messaging."""
+    all_users = users.get_all_users()
+    current_user = request.session.get('user_name', '')
+    usernames = sorted([u['username'] for u in all_users if u['username'] != current_user])
+    return {"users": usernames}
+
+
+@app.post("/api/messages/send")
+@require_auth
+def send_private_message(request: Request, message_data: dict):
+    """Send a private message (notification) to another user."""
+    sender = request.session.get('user_name', '')
+    recipient = message_data.get('username', '').strip()
+    text = message_data.get('text', '').strip()
+
+    if not recipient:
+        raise HTTPException(status_code=400, detail="Recipient is required")
+
+    if not text:
+        raise HTTPException(status_code=400, detail="Message text is required")
+
+    if len(text) > 500:
+        raise HTTPException(status_code=400, detail="Message too long (max 500 characters)")
+
+    if not users.user_exists(recipient):
+        raise HTTPException(status_code=404, detail=f"User {recipient} not found")
+
+    if recipient == sender:
+        raise HTTPException(status_code=400, detail="Cannot send a message to yourself")
+
+    users.add_message(recipient, "success", f"Message from {sender}", text)
+
+    return {"status": "success", "message": f"Private message sent to {recipient}"}
+
+
 # ============== Chat Endpoints ==============
 
 @app.get("/api/chat/messages")
