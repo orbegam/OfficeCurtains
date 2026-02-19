@@ -2,6 +2,16 @@
 
 ## February 2026
 
+### Version 3.1.0 - Admin Panel Cleanup & Room Tracking
+- **Unique Users Per Room**: Room statistics now show how many unique users controlled each room today instead of action counts
+- **Simplified Admin Panel**: Removed the "Send Message to User" section from admin panel
+- **Statistics Page Removed**: Removed the dedicated statistics page and sidebar link for a cleaner navigation
+- **Rooms Section Moved**: "Rooms Used Today" section is now displayed below "All Users" for better layout
+- **Private Messaging for Everyone**: All users can now send private messages, not just admins
+- **Autocomplete Recipients**: Type 3+ characters to search for users when sending private messages
+- **SQLite Migration**: Migrated all data storage from JSON/CSV files to SQLite for better performance and reliability
+- **User Info from Microsoft**: Job title and office location are now fetched from Microsoft and shown in admin panel
+
 ### Version 3.0.0 - Points System & Admin Panel
 - **Points Mechanism**: Earn 20 points for each successful referral!
 - **Premium at 60 Points**: Automatically receive Premium status when you reach 60 points (3 referrals)
