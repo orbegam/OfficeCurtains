@@ -308,11 +308,10 @@ def control_curtain(request: Request, room_name: str, action: str, direction: st
     # Send the message to the server
     res = send_message(operation_type, lift_direction, creds, address)
     if res.status_code == 200 or res.status_code == 202:
-        users.record_room_stat(room_name, action)
-        
-        # Track room for user
+        # Track room usage for stats
         username = request.session.get('user_name')
         if username:
+            users.record_room_stat(room_name, username)
             try:
                 users.add_room(username, room_name)
             except Exception as e:
@@ -321,16 +320,6 @@ def control_curtain(request: Request, room_name: str, action: str, direction: st
         return {"status": "success", "message": f"Curtain in room {room_name} {action} command sent successfully."}
     else:
         raise HTTPException(status_code=res.status_code, detail=f"Failed to send command {res.text}")
-
-
-@app.get("/stats/all")
-@require_auth
-def get_all_stats(request: Request):
-    """Get statistics for all days"""
-    return {
-        "data": users.get_all_room_stats(),
-        "total_unique_rooms": users.get_total_unique_rooms()
-    }
 
 
 @app.get("/auth/callback")
@@ -636,35 +625,6 @@ def grant_points_admin(request: Request, username: str, points: int):
         "status": "success",
         "message": f"Granted {points} points to {username}",
         "new_total": users.get_points(username)
-    }
-
-
-@app.post("/api/admin/send-message")
-@require_admin
-def send_message_admin(request: Request, message_data: dict):
-    """Send a message to a user (admin only)."""
-    username = message_data.get('username', '').strip()
-    message_type = message_data.get('type', 'success')
-    title = message_data.get('title', '').strip()
-    text = message_data.get('text', '').strip()
-    
-    if not username:
-        raise HTTPException(status_code=400, detail="Username is required")
-    
-    if not users.user_exists(username):
-        raise HTTPException(status_code=404, detail=f"User {username} not found")
-    
-    if message_type not in ['success', 'warning', 'failure']:
-        raise HTTPException(status_code=400, detail="Message type must be 'success', 'warning', or 'failure'")
-    
-    if not title or not text:
-        raise HTTPException(status_code=400, detail="Title and text are required")
-    
-    users.add_message(username, message_type, title, text)
-    
-    return {
-        "status": "success",
-        "message": f"Message sent to {username}"
     }
 
 

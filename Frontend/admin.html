@@ -302,43 +302,6 @@
             <div id="grantMessage" class="message-box"></div>
         </div>
 
-        <!-- Send Message Section -->
-        <div class="grant-points-section">
-            <h2>Send Message to User</h2>
-            <form class="grant-form" onsubmit="sendMessage(event)">
-                <div class="form-group">
-                    <label for="messageUsername">Username</label>
-                    <input type="text" id="messageUsername" required placeholder="Enter username">
-                </div>
-                <div class="form-group">
-                    <label for="messageType">Type</label>
-                    <select id="messageType" required>
-                        <option value="success">Success</option>
-                        <option value="warning">Warning</option>
-                        <option value="failure">Failure</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="messageTitle">Title</label>
-                    <input type="text" id="messageTitle" required placeholder="Message title">
-                </div>
-                <div class="form-group">
-                    <label for="messageText">Message</label>
-                    <input type="text" id="messageText" required placeholder="Message content" style="min-width: 300px;">
-                </div>
-                <button type="submit" class="grant-button">Send Message</button>
-            </form>
-            <div id="sendMessageBox" class="message-box"></div>
-        </div>
-
-        <!-- Unique Rooms Today -->
-        <div class="users-table-section" style="margin-bottom: 2rem;">
-            <h2>🏛 Rooms Used Today</h2>
-            <div id="uniqueRoomsContainer">
-                <div class="loading">Loading...</div>
-            </div>
-        </div>
-
         <!-- Users Active Today Section -->
         <div class="users-table-section" style="margin-bottom: 2rem;">
             <h2>📅 Users Active Today</h2>
@@ -360,6 +323,14 @@
             <h2>All Users</h2>
             <div id="usersTableContainer">
                 <div class="loading">Loading users...</div>
+            </div>
+        </div>
+
+        <!-- Unique Rooms Today -->
+        <div class="users-table-section" style="margin-top: 2rem;">
+            <h2>🏛 Rooms Used Today</h2>
+            <div id="uniqueRoomsContainer">
+                <div class="loading">Loading...</div>
             </div>
         </div>
     </div>
@@ -506,51 +477,6 @@
             } catch (error) {
                 console.error('Error granting points:', error);
                 showMessageBox('❌ Error granting points', 'error', 'grantMessage');
-            }
-        }
-
-        async function sendMessage(event) {
-            event.preventDefault();
-            
-            const username = document.getElementById('messageUsername').value.trim();
-            const messageType = document.getElementById('messageType').value;
-            const title = document.getElementById('messageTitle').value.trim();
-            const text = document.getElementById('messageText').value.trim();
-
-            if (!username || !title || !text) {
-                showMessageBox('Please fill in all fields', 'error', 'sendMessageBox');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/admin/send-message', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        username: username,
-                        type: messageType,
-                        title: title,
-                        text: text
-                    })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    showMessageBox(`✅ ${data.message}`, 'success', 'sendMessageBox');
-                    document.getElementById('messageUsername').value = '';
-                    document.getElementById('messageTitle').value = '';
-                    document.getElementById('messageText').value = '';
-                    document.getElementById('messageType').value = 'success';
-                } else {
-                    showMessageBox(`❌ ${data.detail || 'Failed to send message'}`, 'error', 'sendMessageBox');
-                }
-            } catch (error) {
-                console.error('Error sending message:', error);
-                showMessageBox('❌ Error sending message', 'error', 'sendMessageBox');
             }
         }
 
@@ -705,9 +631,7 @@
                         <thead>
                             <tr>
                                 <th>Room</th>
-                                <th>Up</th>
-                                <th>Down</th>
-                                <th>Stop</th>
+                                <th>Unique Users</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -717,9 +641,7 @@
                     tableHTML += `
                         <tr>
                             <td><strong>${room.room_number}</strong></td>
-                            <td>${room.up}</td>
-                            <td>${room.down}</td>
-                            <td>${room.stop}</td>
+                            <td>${room.unique_users}</td>
                         </tr>
                     `;
                 });
