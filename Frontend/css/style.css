@@ -808,6 +808,6 @@ textarea {
 /* Hide help button on smaller screens */
 @media (max-width: 1200px) {
     .report-container {
-        display: none !important;
+        /* Keep Need Help button visible on mobile */
     }
 }
