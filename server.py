@@ -551,7 +551,7 @@ def list_users(request: Request):
     """Get list of all usernames for messaging."""
     all_users = users.get_all_users()
     current_user = request.session.get('user_name', '')
-    usernames = sorted([u['username'] for u in all_users if u['username'] != current_user])
+    usernames = sorted([username for username in all_users if username != current_user])
     return {"users": usernames}
 
 
