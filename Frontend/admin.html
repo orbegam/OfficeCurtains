@@ -331,6 +331,14 @@
             <div id="sendMessageBox" class="message-box"></div>
         </div>
 
+        <!-- Unique Rooms Today -->
+        <div class="users-table-section" style="margin-bottom: 2rem;">
+            <h2>🏛 Rooms Used Today</h2>
+            <div id="uniqueRoomsContainer">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
         <!-- Users Active Today Section -->
         <div class="users-table-section" style="margin-bottom: 2rem;">
             <h2>📅 Users Active Today</h2>
@@ -344,14 +352,6 @@
             <h2>🆕 New Users Today</h2>
             <div id="newUsersTableContainer">
                 <div class="loading">Loading new users...</div>
-            </div>
-        </div>
-
-        <!-- Unique Rooms Today -->
-        <div class="users-table-section" style="margin-bottom: 2rem;">
-            <h2>🏛 Unique Rooms Used Today</h2>
-            <div id="uniqueRoomsContainer">
-                <div class="loading">Loading...</div>
             </div>
         </div>
 
@@ -692,12 +692,44 @@
                 });
                 if (!response.ok) throw new Error('Failed to load');
                 const data = await response.json();
-                document.getElementById('uniqueRoomsContainer').innerHTML = 
-                    `<p style="font-size: 1.5rem; font-weight: 700; color: #2563eb; margin: 0.5rem 0;">🏛 ${data.count} room${data.count !== 1 ? 's' : ''}</p>`;
+                const container = document.getElementById('uniqueRoomsContainer');
+
+                if (!data.rooms || data.rooms.length === 0) {
+                    container.innerHTML = '<div class="loading">No rooms used today</div>';
+                    return;
+                }
+
+                let tableHTML = `
+                    <p style="margin-bottom: 0.75rem; color: #6b7280;"><strong>${data.count}</strong> unique room${data.count !== 1 ? 's' : ''}</p>
+                    <table class="users-table" style="font-size: 0.85rem;">
+                        <thead>
+                            <tr>
+                                <th>Room</th>
+                                <th>Up</th>
+                                <th>Down</th>
+                                <th>Stop</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.rooms.forEach(room => {
+                    tableHTML += `
+                        <tr>
+                            <td><strong>${room.room_number}</strong></td>
+                            <td>${room.up}</td>
+                            <td>${room.down}</td>
+                            <td>${room.stop}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += '</tbody></table>';
+                container.innerHTML = tableHTML;
             } catch (error) {
                 console.error('Error loading unique rooms:', error);
                 document.getElementById('uniqueRoomsContainer').innerHTML = 
-                    '<div class="loading" style="color: #dc2626;">Error loading unique rooms</div>';
+                    '<div class="loading" style="color: #dc2626;">Error loading rooms</div>';
             }
         }
     </script>

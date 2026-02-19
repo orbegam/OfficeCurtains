@@ -11,7 +11,6 @@ from starlette.staticfiles import StaticFiles
 from auth import get_auth_app
 from config import *
 from helper import get_suffix, get_username, get_states_by_direction, send_message, get_room_states
-from statistics import StatisticsManager
 from utils import get_client_ip, setup_logging
 import users
 
@@ -31,8 +30,6 @@ app.add_middleware(SessionMiddleware, secret_key=COOKIES_KEY, max_age=session_ma
 # Constants for the server and authentication
 
 app.mount("/Frontend", StaticFiles(directory="Frontend"), name="Frontend")
-
-stats_manager = StatisticsManager()
 
 
 # Authentication decorator
@@ -311,7 +308,6 @@ def control_curtain(request: Request, room_name: str, action: str, direction: st
     # Send the message to the server
     res = send_message(operation_type, lift_direction, creds, address)
     if res.status_code == 200 or res.status_code == 202:
-        stats_manager.update_stats(room_name, action)
         users.record_room_stat(room_name, action)
         
         # Track room for user
@@ -691,6 +687,6 @@ def get_new_users_today_admin(request: Request):
 @app.get("/api/admin/unique-rooms-today")
 @require_admin
 def get_unique_rooms_today_admin(request: Request):
-    """Get count of unique rooms used today (admin only)."""
-    count = users.get_unique_rooms_today()
-    return {"count": count}
+    """Get rooms used today with stats (admin only)."""
+    rooms = users.get_daily_room_stats()
+    return {"rooms": rooms, "count": len(rooms)}
