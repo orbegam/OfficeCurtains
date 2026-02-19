@@ -107,7 +107,8 @@ def submit_report(request: Request, report: str):
 
 
 @app.get("/whats-new")
-def get_whats_new():
+@require_auth
+def get_whats_new(request: Request):
     """Serve the what's new markdown content"""
     whats_new_file = "whats_new.md"
     
@@ -124,7 +125,8 @@ def get_whats_new():
 
 
 @app.get("/version")
-def get_version():
+@require_auth
+def get_version(request: Request):
     """Serve the current version from .version file"""
     version_file = ".version"
     
