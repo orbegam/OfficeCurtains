@@ -396,13 +396,17 @@
                 return;
             }
 
-            // Convert to array and sort by points (descending)
+            // Convert to array and sort by usage_days (descending), then points
             const usersArray = Object.entries(users).map(([username, userData]) => ({
                 username,
                 ...userData
             }));
             
-            usersArray.sort((a, b) => (b.points || 0) - (a.points || 0));
+            usersArray.sort((a, b) => {
+                const usageDiff = (b.usage_days || 0) - (a.usage_days || 0);
+                if (usageDiff !== 0) return usageDiff;
+                return (b.points || 0) - (a.points || 0);
+            });
 
             let tableHTML = `
                 <table class="users-table">
@@ -411,6 +415,7 @@
                             <th>Username</th>
                             <th>Premium</th>
                             <th>Points</th>
+                            <th>Days Used</th>
                             <th>Rooms Controlled</th>
                         </tr>
                     </thead>
@@ -421,7 +426,7 @@
                 const isPremium = user.is_premium || false;
                 const points = user.points || 0;
                 const rooms = user.rooms || [];
-                const roomsId = `rooms-${index}`;
+                const usageDays = user.usage_days || 0;
 
                 tableHTML += `
                     <tr>
@@ -430,12 +435,10 @@
                             ${isPremium ? '<span class="premium-badge">👑 Premium</span>' : '—'}
                         </td>
                         <td>${points} 🎯</td>
+                        <td>${usageDays} 📅</td>
                         <td>
                             ${rooms.length > 0 ? `
-                                <button class="rooms-toggle" onclick="toggleRooms('${roomsId}')">
-                                    🏛 ${rooms.length} room${rooms.length !== 1 ? 's' : ''}
-                                </button>
-                                <div id="${roomsId}" class="rooms-list">
+                                <div class="rooms-list" style="display: flex;">
                                     ${rooms.map(room => `<span class="room-tag">${room}</span>`).join('')}
                                 </div>
                             ` : '—'}
