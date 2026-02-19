@@ -347,6 +347,14 @@
             </div>
         </div>
 
+        <!-- Unique Rooms Today -->
+        <div class="users-table-section" style="margin-bottom: 2rem;">
+            <h2>🏛 Unique Rooms Used Today</h2>
+            <div id="uniqueRoomsContainer">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
         <!-- Users Table Section -->
         <div class="users-table-section">
             <h2>All Users</h2>
@@ -675,6 +683,23 @@
         loadUsers();
         loadActiveUsersToday();
         loadNewUsersToday();
+        loadUniqueRoomsToday();
+
+        async function loadUniqueRoomsToday() {
+            try {
+                const response = await fetch('/api/admin/unique-rooms-today', {
+                    credentials: 'include'
+                });
+                if (!response.ok) throw new Error('Failed to load');
+                const data = await response.json();
+                document.getElementById('uniqueRoomsContainer').innerHTML = 
+                    `<p style="font-size: 1.5rem; font-weight: 700; color: #2563eb; margin: 0.5rem 0;">🏛 ${data.count} room${data.count !== 1 ? 's' : ''}</p>`;
+            } catch (error) {
+                console.error('Error loading unique rooms:', error);
+                document.getElementById('uniqueRoomsContainer').innerHTML = 
+                    '<div class="loading" style="color: #dc2626;">Error loading unique rooms</div>';
+            }
+        }
     </script>
 </body>
 </html>

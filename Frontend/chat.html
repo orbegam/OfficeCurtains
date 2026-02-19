@@ -242,7 +242,8 @@
         }
 
         .pm-form select,
-        .pm-form textarea {
+        .pm-form textarea,
+        .pm-form input[type="text"] {
             width: 100%;
             padding: 0.5rem 0.75rem;
             border: 2px solid #e5e7eb;
@@ -255,20 +256,23 @@
         }
 
         .dark-mode .pm-form select,
-        .dark-mode .pm-form textarea {
+        .dark-mode .pm-form textarea,
+        .dark-mode .pm-form input[type="text"] {
             background: #374151;
             border-color: #4b5563;
             color: white;
         }
 
         .pm-form select:focus,
-        .pm-form textarea:focus {
+        .pm-form textarea:focus,
+        .pm-form input[type="text"]:focus {
             outline: none;
             border-color: #2563eb;
         }
 
         .dark-mode .pm-form select:focus,
-        .dark-mode .pm-form textarea:focus {
+        .dark-mode .pm-form textarea:focus,
+        .dark-mode .pm-form input[type="text"]:focus {
             border-color: #60a5fa;
         }
 
@@ -276,6 +280,51 @@
             resize: vertical;
             min-height: 60px;
             max-height: 120px;
+        }
+
+        .pm-autocomplete {
+            position: relative;
+        }
+
+        .pm-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card-bg, #ffffff);
+            border: 2px solid #e5e7eb;
+            border-top: none;
+            border-radius: 0 0 0.5rem 0.5rem;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 10;
+            display: none;
+            margin-top: -0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .dark-mode .pm-suggestions {
+            background: #374151;
+            border-color: #4b5563;
+        }
+
+        .pm-suggestion-item {
+            padding: 0.4rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #374151;
+        }
+
+        .dark-mode .pm-suggestion-item {
+            color: #d1d5db;
+        }
+
+        .pm-suggestion-item:hover {
+            background: #eff6ff;
+        }
+
+        .dark-mode .pm-suggestion-item:hover {
+            background: #4b5563;
         }
 
         .pm-send-button {
@@ -397,9 +446,10 @@
 
         <div class="pm-form">
             <label for="pmRecipient">Recipient</label>
-            <select id="pmRecipient">
-                <option value="">Loading users...</option>
-            </select>
+            <div class="pm-autocomplete">
+                <input type="text" id="pmRecipient" placeholder="Type at least 3 characters..." autocomplete="off">
+                <div class="pm-suggestions" id="pmSuggestions"></div>
+            </div>
 
             <label for="pmText">Message</label>
             <textarea id="pmText" placeholder="Type your private message..." maxlength="500"></textarea>
@@ -496,21 +546,52 @@
         }
 
         // ============== Private Messages ==============
-        async function loadUsers() {
-            try {
-                const response = await fetch('/api/users/list', {
-                    credentials: 'include'
-                });
-                if (!response.ok) throw new Error('Failed to load users');
-                const data = await response.json();
-                const select = document.getElementById('pmRecipient');
-                select.innerHTML = '<option value="">-- Select a user --</option>' +
-                    data.users.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
-            } catch (error) {
-                console.error('Error loading users:', error);
-                document.getElementById('pmRecipient').innerHTML = '<option value="">Failed to load users</option>';
+        let searchTimeout = null;
+
+        document.getElementById('pmRecipient').addEventListener('input', function() {
+            const query = this.value.trim();
+            const suggestionsEl = document.getElementById('pmSuggestions');
+
+            if (query.length < 3) {
+                suggestionsEl.style.display = 'none';
+                return;
             }
+
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`, {
+                        credentials: 'include'
+                    });
+                    if (!response.ok) throw new Error('Search failed');
+                    const data = await response.json();
+
+                    if (data.users.length === 0) {
+                        suggestionsEl.innerHTML = '<div class="pm-suggestion-item" style="color:#9ca3af;cursor:default;">No users found</div>';
+                    } else {
+                        suggestionsEl.innerHTML = data.users.map(u =>
+                            `<div class="pm-suggestion-item" onclick="selectRecipient('${escapeHtml(u)}')">${escapeHtml(u)}</div>`
+                        ).join('');
+                    }
+                    suggestionsEl.style.display = 'block';
+                } catch (error) {
+                    console.error('Error searching users:', error);
+                    suggestionsEl.style.display = 'none';
+                }
+            }, 300);
+        });
+
+        function selectRecipient(username) {
+            document.getElementById('pmRecipient').value = username;
+            document.getElementById('pmSuggestions').style.display = 'none';
         }
+
+        // Hide suggestions on click outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.pm-autocomplete')) {
+                document.getElementById('pmSuggestions').style.display = 'none';
+            }
+        });
 
         async function sendPrivateMessage() {
             const recipient = document.getElementById('pmRecipient').value;
@@ -522,7 +603,7 @@
             statusEl.style.display = 'none';
 
             if (!recipient) {
-                statusEl.textContent = 'Please select a recipient.';
+                statusEl.textContent = 'Please enter a recipient username.';
                 statusEl.className = 'pm-status error';
                 return;
             }
@@ -573,7 +654,6 @@
 
         // Load on page load
         loadMessages();
-        loadUsers();
         setInterval(loadMessages, 3000);
 
         // Apply dark mode if set

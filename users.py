@@ -76,6 +76,13 @@ def init_db():
                 PRIMARY KEY (username, date),
                 FOREIGN KEY (username) REFERENCES users(username)
             );
+
+            CREATE TABLE IF NOT EXISTS room_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                room_number TEXT NOT NULL,
+                action TEXT NOT NULL,
+                date TEXT NOT NULL
+            );
         """)
     logging.info("Database initialized")
 
@@ -418,3 +425,91 @@ def get_chat_messages() -> list:
             }
             for r in rows
         ]
+
+
+# ============== User Search Functions ==============
+
+def search_users(query: str) -> List[str]:
+    """Search for usernames starting with the given query (min 3 chars)."""
+    if len(query) < 3:
+        return []
+    with _get_db() as conn:
+        rows = conn.execute(
+            "SELECT username FROM users WHERE username LIKE ? ORDER BY username LIMIT 20",
+            (query + "%",)
+        ).fetchall()
+        return [r["username"] for r in rows]
+
+
+# ============== Room Statistics Functions ==============
+
+def record_room_stat(room_number: str, action: str):
+    """Record a room action (up/down/stop) for statistics."""
+    today = date.today().isoformat()
+    with _get_db() as conn:
+        conn.execute(
+            "INSERT INTO room_stats (room_number, action, date) VALUES (?, ?, ?)",
+            (room_number, action, today)
+        )
+    logging.info(f"Recorded stat: room={room_number}, action={action}")
+
+
+def get_daily_room_stats(target_date: str = None) -> list:
+    """Get room statistics for a specific date (default: today)."""
+    if target_date is None:
+        target_date = date.today().isoformat()
+    with _get_db() as conn:
+        rows = conn.execute("""
+            SELECT room_number,
+                   SUM(CASE WHEN action = 'up' THEN 1 ELSE 0 END) as up,
+                   SUM(CASE WHEN action = 'down' THEN 1 ELSE 0 END) as down,
+                   SUM(CASE WHEN action = 'stop' THEN 1 ELSE 0 END) as stop
+            FROM room_stats WHERE date = ?
+            GROUP BY room_number ORDER BY room_number
+        """, (target_date,)).fetchall()
+        return [{"room_number": r["room_number"], "up": r["up"], "down": r["down"], "stop": r["stop"]} for r in rows]
+
+
+def get_all_room_stats() -> list:
+    """Get room statistics for all dates."""
+    with _get_db() as conn:
+        dates = conn.execute(
+            "SELECT DISTINCT date FROM room_stats ORDER BY date DESC"
+        ).fetchall()
+        all_stats = []
+        for d in dates:
+            dt = d["date"]
+            stats = get_daily_room_stats(dt)
+            try:
+                from datetime import datetime as dt_cls
+                formatted_date = dt_cls.strptime(dt, '%Y-%m-%d').strftime('%A, %B %d, %Y')
+            except Exception:
+                formatted_date = dt
+            unique_rooms = len(set(s["room_number"] for s in stats))
+            all_stats.append({
+                "date": formatted_date,
+                "raw_date": dt,
+                "stats": stats,
+                "room_count": unique_rooms
+            })
+        return all_stats
+
+
+def get_unique_rooms_today() -> int:
+    """Count unique rooms used today."""
+    today = date.today().isoformat()
+    with _get_db() as conn:
+        row = conn.execute(
+            "SELECT COUNT(DISTINCT room_number) as cnt FROM room_stats WHERE date = ?",
+            (today,)
+        ).fetchone()
+        return row["cnt"] if row else 0
+
+
+def get_total_unique_rooms() -> int:
+    """Count total unique rooms across all history."""
+    with _get_db() as conn:
+        row = conn.execute(
+            "SELECT COUNT(DISTINCT room_number) as cnt FROM room_stats"
+        ).fetchone()
+        return row["cnt"] if row else 0

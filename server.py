@@ -312,6 +312,7 @@ def control_curtain(request: Request, room_name: str, action: str, direction: st
     res = send_message(operation_type, lift_direction, creds, address)
     if res.status_code == 200 or res.status_code == 202:
         stats_manager.update_stats(room_name, action)
+        users.record_room_stat(room_name, action)
         
         # Track room for user
         username = request.session.get('user_name')
@@ -331,8 +332,8 @@ def control_curtain(request: Request, room_name: str, action: str, direction: st
 def get_all_stats(request: Request):
     """Get statistics for all days"""
     return {
-        "data": stats_manager.get_all_stats(),
-        "total_unique_rooms": stats_manager.get_total_unique_rooms_count()
+        "data": users.get_all_room_stats(),
+        "total_unique_rooms": users.get_total_unique_rooms()
     }
 
 
@@ -545,14 +546,15 @@ def handle_referral(request: Request, code: str):
 
 # ============== Private Message Endpoints ==============
 
-@app.get("/api/users/list")
+@app.get("/api/users/search")
 @require_auth
-def list_users(request: Request):
-    """Get list of all usernames for messaging."""
-    all_users = users.get_all_users()
+def search_users_endpoint(request: Request, q: str = ""):
+    """Search for usernames starting with query (min 3 chars)."""
+    if len(q) < 3:
+        return {"users": []}
     current_user = request.session.get('user_name', '')
-    usernames = sorted([username for username in all_users if username != current_user])
-    return {"users": usernames}
+    matches = users.search_users(q)
+    return {"users": [u for u in matches if u != current_user]}
 
 
 @app.post("/api/messages/send")
@@ -688,3 +690,11 @@ def get_new_users_today_admin(request: Request):
     """Get users who registered today (admin only)."""
     new_users = users.get_new_users_today()
     return {"users": new_users, "count": len(new_users)}
+
+
+@app.get("/api/admin/unique-rooms-today")
+@require_admin
+def get_unique_rooms_today_admin(request: Request):
+    """Get count of unique rooms used today (admin only)."""
+    count = users.get_unique_rooms_today()
+    return {"count": count}
