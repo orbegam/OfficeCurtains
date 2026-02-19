@@ -6,6 +6,7 @@ Uses a JSON file for storage.
 import json
 import os
 import logging
+from datetime import datetime, date
 from typing import Optional, List
 
 USERS_FILE = os.getenv('USERS_FILE', 'users.json')
@@ -26,6 +27,13 @@ def _load_users() -> dict:
                     needs_save = True
                 if 'points' not in user_data:
                     user_data['points'] = 0
+                    needs_save = True
+                # Migrate: add created_at and last_active for existing users
+                if 'created_at' not in user_data:
+                    user_data['created_at'] = None  # Unknown for existing users
+                    needs_save = True
+                if 'last_active' not in user_data:
+                    user_data['last_active'] = None
                     needs_save = True
                 # Remove old notification fields
                 if 'pending_premium_from' in user_data:
@@ -52,13 +60,16 @@ def _save_users(users: dict):
 def get_or_create_user(username: str) -> dict:
     """Get existing user or create a new one. Returns user dict."""
     users = _load_users()
+    now = datetime.now().isoformat()
     
     if username not in users:
         users[username] = {
             "is_premium": False,
             "rooms": [],
             "messages": [],
-            "points": 0
+            "points": 0,
+            "created_at": now,
+            "last_active": now
         }
         _save_users(users)
         logging.info(f"Created new user: {username}")
@@ -117,6 +128,56 @@ def get_rooms(username: str) -> List[str]:
 def get_all_users() -> dict:
     """Get all users (for admin purposes)."""
     return _load_users()
+
+
+def update_last_active(username: str):
+    """Update the last_active timestamp for a user."""
+    users = _load_users()
+    if username in users:
+        users[username]["last_active"] = datetime.now().isoformat()
+        _save_users(users)
+
+
+def get_users_active_today() -> List[dict]:
+    """Get list of users who were active today with their rooms."""
+    users = _load_users()
+    today = date.today().isoformat()
+    active_today = []
+    
+    for username, user_data in users.items():
+        last_active = user_data.get("last_active")
+        if last_active and last_active.startswith(today):
+            active_today.append({
+                "username": username,
+                "rooms": user_data.get("rooms", []),
+                "is_premium": user_data.get("is_premium", False),
+                "last_active": last_active
+            })
+    
+    # Sort by last_active time (most recent first)
+    active_today.sort(key=lambda x: x["last_active"], reverse=True)
+    return active_today
+
+
+def get_new_users_today() -> List[dict]:
+    """Get list of users who registered today (first time on site)."""
+    users = _load_users()
+    today = date.today().isoformat()
+    new_today = []
+    
+    for username, user_data in users.items():
+        created_at = user_data.get("created_at")
+        if created_at and created_at.startswith(today):
+            new_today.append({
+                "username": username,
+                "rooms": user_data.get("rooms", []),
+                "is_premium": user_data.get("is_premium", False),
+                "created_at": created_at
+            })
+    
+    # Sort by created_at time (most recent first)
+    new_today.sort(key=lambda x: x["created_at"], reverse=True)
+    return new_today
 
 
 def get_referral_code(username: str) -> str:

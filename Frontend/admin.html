@@ -331,6 +331,22 @@
             <div id="sendMessageBox" class="message-box"></div>
         </div>
 
+        <!-- Users Active Today Section -->
+        <div class="users-table-section" style="margin-bottom: 2rem;">
+            <h2>📅 Users Active Today</h2>
+            <div id="activeUsersTableContainer">
+                <div class="loading">Loading active users...</div>
+            </div>
+        </div>
+
+        <!-- New Users Today Section -->
+        <div class="users-table-section" style="margin-bottom: 2rem;">
+            <h2>🆕 New Users Today</h2>
+            <div id="newUsersTableContainer">
+                <div class="loading">Loading new users...</div>
+            </div>
+        </div>
+
         <!-- Users Table Section -->
         <div class="users-table-section">
             <h2>All Users</h2>
@@ -532,8 +548,124 @@
             }, 5000);
         }
 
+        // Load users active today
+        async function loadActiveUsersToday() {
+            try {
+                const response = await fetch('/api/admin/users-active-today', {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        document.getElementById('activeUsersTableContainer').innerHTML = 
+                            '<div class="loading" style="color: #dc2626;">Access Denied: Admin privileges required</div>';
+                        return;
+                    }
+                    throw new Error('Failed to load active users');
+                }
+
+                const data = await response.json();
+                displayDailyUsersTable(data.users, 'activeUsersTableContainer', 'last_active', data.count);
+            } catch (error) {
+                console.error('Error loading active users:', error);
+                document.getElementById('activeUsersTableContainer').innerHTML = 
+                    '<div class="loading" style="color: #dc2626;">Error loading active users</div>';
+            }
+        }
+
+        // Load new users today
+        async function loadNewUsersToday() {
+            try {
+                const response = await fetch('/api/admin/new-users-today', {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        document.getElementById('newUsersTableContainer').innerHTML = 
+                            '<div class="loading" style="color: #dc2626;">Access Denied: Admin privileges required</div>';
+                        return;
+                    }
+                    throw new Error('Failed to load new users');
+                }
+
+                const data = await response.json();
+                displayDailyUsersTable(data.users, 'newUsersTableContainer', 'created_at', data.count);
+            } catch (error) {
+                console.error('Error loading new users:', error);
+                document.getElementById('newUsersTableContainer').innerHTML = 
+                    '<div class="loading" style="color: #dc2626;">Error loading new users</div>';
+            }
+        }
+
+        function displayDailyUsersTable(usersList, containerId, timeField, count) {
+            const container = document.getElementById(containerId);
+            
+            if (!usersList || usersList.length === 0) {
+                container.innerHTML = '<div class="loading">No users found for today</div>';
+                return;
+            }
+
+            let tableHTML = `
+                <p style="margin-bottom: 1rem; color: #6b7280;"><strong>${count}</strong> user${count !== 1 ? 's' : ''}</p>
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Premium</th>
+                            <th>Rooms</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            usersList.forEach((user, index) => {
+                const isPremium = user.is_premium || false;
+                const rooms = user.rooms || [];
+                const timeValue = user[timeField];
+                const roomsId = `${containerId}-rooms-${index}`;
+                
+                // Format time nicely
+                let formattedTime = '—';
+                if (timeValue) {
+                    const date = new Date(timeValue);
+                    formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                }
+
+                tableHTML += `
+                    <tr>
+                        <td><strong>${user.username}</strong></td>
+                        <td>
+                            ${isPremium ? '<span class="premium-badge">👑 Premium</span>' : '—'}
+                        </td>
+                        <td>
+                            ${rooms.length > 0 ? `
+                                <button class="rooms-toggle" onclick="toggleRooms('${roomsId}')">
+                                    🏛 ${rooms.length} room${rooms.length !== 1 ? 's' : ''}
+                                </button>
+                                <div id="${roomsId}" class="rooms-list">
+                                    ${rooms.map(room => `<span class="room-tag">${room}</span>`).join('')}
+                                </div>
+                            ` : '—'}
+                        </td>
+                        <td>${formattedTime}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = tableHTML;
+        }
+
         // Load users on page load
         loadUsers();
+        loadActiveUsersToday();
+        loadNewUsersToday();
     </script>
 </body>
 </html>

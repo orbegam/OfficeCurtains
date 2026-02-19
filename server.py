@@ -226,6 +226,9 @@ def check_auth(request: Request):
             'is_admin': False
         }
 
+    # Update last active timestamp
+    users.update_last_active(username)
+
     return {
         'authenticated': True,
         'username': username,
@@ -627,3 +630,19 @@ def send_message_admin(request: Request, message_data: dict):
         "status": "success",
         "message": f"Message sent to {username}"
     }
+
+
+@app.get("/api/admin/users-active-today")
+@require_admin
+def get_users_active_today_admin(request: Request):
+    """Get users who were active today (admin only)."""
+    active_users = users.get_users_active_today()
+    return {"users": active_users, "count": len(active_users)}
+
+
+@app.get("/api/admin/new-users-today")
+@require_admin
+def get_new_users_today_admin(request: Request):
+    """Get users who registered today (admin only)."""
+    new_users = users.get_new_users_today()
+    return {"users": new_users, "count": len(new_users)}
