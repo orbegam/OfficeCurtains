@@ -552,9 +552,8 @@ def search_users_endpoint(request: Request, q: str = ""):
     """Search for usernames starting with query (min 3 chars)."""
     if len(q) < 3:
         return {"users": []}
-    current_user = request.session.get('user_name', '')
     matches = users.search_users(q)
-    return {"users": [u for u in matches if u != current_user]}
+    return {"users": matches}
 
 
 @app.post("/api/messages/send")
@@ -576,9 +575,6 @@ def send_private_message(request: Request, message_data: dict):
 
     if not users.user_exists(recipient):
         raise HTTPException(status_code=404, detail=f"User {recipient} not found")
-
-    if recipient == sender:
-        raise HTTPException(status_code=400, detail="Cannot send a message to yourself")
 
     users.add_message(recipient, "success", f"Message from {sender}", text)
 
