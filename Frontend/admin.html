@@ -413,6 +413,8 @@
                     <thead>
                         <tr>
                             <th>Username</th>
+                            <th>Title</th>
+                            <th>Office</th>
                             <th>Premium</th>
                             <th>Points</th>
                             <th>Days Used</th>
@@ -427,10 +429,14 @@
                 const points = user.points || 0;
                 const rooms = user.rooms || [];
                 const usageDays = user.usage_days || 0;
+                const jobTitle = user.job_title || '—';
+                const officeLocation = user.office_location || '—';
 
                 tableHTML += `
                     <tr>
                         <td><strong>${user.username}</strong></td>
+                        <td>${jobTitle}</td>
+                        <td>${officeLocation}</td>
                         <td>
                             ${isPremium ? '<span class="premium-badge">👑 Premium</span>' : '—'}
                         </td>

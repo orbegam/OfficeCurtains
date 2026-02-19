@@ -19,3 +19,6 @@ Scripts/python.exe
 reports.txt
 tshirt_requests.txt
 .vscode/
+*.db
+*.db-shm
+*.db-wal

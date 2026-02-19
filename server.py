@@ -376,6 +376,8 @@ def auth_callback(request: Request, code: str = None, state: str = None, error: 
  
         # Store username in session
         username = graph_data.get("displayName", "Unknown User")
+        job_title = graph_data.get("jobTitle")
+        office_location = graph_data.get("officeLocation")
         logging.info(f'Graph result: {graph_data}')
         logging.info(f'Setting username to {username}')
         request.session['user_name'] = username
@@ -384,7 +386,7 @@ def auth_callback(request: Request, code: str = None, state: str = None, error: 
         is_new_user = not users.user_exists(username)
         
         # Save user to premium service
-        users.get_or_create_user(username)
+        users.get_or_create_user(username, job_title=job_title, office_location=office_location)
         
         # Process pending referral ONLY if this is a new user
         pending_referral = request.session.get('pending_referral')

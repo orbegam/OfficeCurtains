@@ -41,7 +41,9 @@ def init_db():
                 is_premium INTEGER NOT NULL DEFAULT 0,
                 points INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT,
-                last_active TEXT
+                last_active TEXT,
+                job_title TEXT,
+                office_location TEXT
             );
 
             CREATE TABLE IF NOT EXISTS user_rooms (
@@ -77,6 +79,16 @@ def init_db():
         """)
     logging.info("Database initialized")
 
+    # Migrate: add new columns if they don't exist
+    with _get_db() as conn:
+        existing_cols = [col[1] for col in conn.execute("PRAGMA table_info(users)").fetchall()]
+        if "job_title" not in existing_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN job_title TEXT")
+            logging.info("Added job_title column to users table")
+        if "office_location" not in existing_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN office_location TEXT")
+            logging.info("Added office_location column to users table")
+
 
 # Initialize DB on module import
 init_db()
@@ -84,15 +96,15 @@ init_db()
 
 # ============== User Functions ==============
 
-def get_or_create_user(username: str) -> dict:
+def get_or_create_user(username: str, job_title: str = None, office_location: str = None) -> dict:
     """Get existing user or create a new one. Returns user dict."""
     now = datetime.now().isoformat()
     with _get_db() as conn:
         row = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         if not row:
             conn.execute(
-                "INSERT INTO users (username, is_premium, points, created_at, last_active) VALUES (?, 0, 0, ?, ?)",
-                (username, now, now)
+                "INSERT INTO users (username, is_premium, points, created_at, last_active, job_title, office_location) VALUES (?, 0, 0, ?, ?, ?, ?)",
+                (username, now, now, job_title, office_location)
             )
             logging.info(f"Created new user: {username}")
             return {
@@ -101,8 +113,22 @@ def get_or_create_user(username: str) -> dict:
                 "rooms": [],
                 "points": 0,
                 "created_at": now,
-                "last_active": now
+                "last_active": now,
+                "job_title": job_title,
+                "office_location": office_location
             }
+        # Update job_title and office_location if provided
+        if job_title is not None or office_location is not None:
+            updates = []
+            params = []
+            if job_title is not None:
+                updates.append("job_title = ?")
+                params.append(job_title)
+            if office_location is not None:
+                updates.append("office_location = ?")
+                params.append(office_location)
+            params.append(username)
+            conn.execute(f"UPDATE users SET {', '.join(updates)} WHERE username = ?", params)
         rooms = [r["room"] for r in conn.execute("SELECT room FROM user_rooms WHERE username = ?", (username,)).fetchall()]
         return {
             "username": row["username"],
@@ -110,7 +136,9 @@ def get_or_create_user(username: str) -> dict:
             "rooms": rooms,
             "points": row["points"],
             "created_at": row["created_at"],
-            "last_active": row["last_active"]
+            "last_active": row["last_active"],
+            "job_title": job_title or row["job_title"],
+            "office_location": office_location or row["office_location"]
         }
 
 
@@ -127,7 +155,9 @@ def get_user(username: str) -> Optional[dict]:
             "rooms": rooms,
             "points": row["points"],
             "created_at": row["created_at"],
-            "last_active": row["last_active"]
+            "last_active": row["last_active"],
+            "job_title": row["job_title"],
+            "office_location": row["office_location"]
         }
 
 
@@ -197,6 +227,8 @@ def get_all_users() -> dict:
                 "points": row["points"],
                 "created_at": row["created_at"],
                 "last_active": row["last_active"],
+                "job_title": row["job_title"],
+                "office_location": row["office_location"],
                 "usage_days": usage_count
             }
         return users
